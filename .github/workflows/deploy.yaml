@@ -1,14 +1,13 @@
 name: Deploy to Aws
 
 on:
-workflow_run:
-  workflows:
-    - "Build and Push Docker Image"
-  types:
-    -  completed
-  branches:
-    - main 
-
+  workflow_run:
+    workflows:
+      - "Build and Push Docker Image"
+    types:
+      - completed
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -23,13 +22,10 @@ jobs:
           username: ${{ secrets.AWS_USER }}
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
-  
-            docker pull ${{secrets.DOCKER_USERNAME }}/fastapi:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/fastapi:latest
             docker stop fastapi || true
             docker rm fastapi || true
             docker run -d \
-               --name fastapi \
-               -p 8000:8000 \
-               ${{secrets.DOCKER_USERNAME }}/fastapi:latest
-
-          
+              --name fastapi \
+              -p 8000:8000 \
+              ${{ secrets.DOCKER_USERNAME }}/fastapi:latest
