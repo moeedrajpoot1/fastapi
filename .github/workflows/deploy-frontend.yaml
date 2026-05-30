@@ -1,0 +1,31 @@
+name: Deploy Frontend to Aws
+
+on:
+  workflow_run:
+    workflows:
+      - "Build and Push Frontend Image"
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Deploy frontend via SSH to Aws Ec2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            docker pull ${{ secrets.DOCKER_USERNAME }}/fastapi-frontend:latest
+            docker stop fastapi-frontend || true
+            docker rm fastapi-frontend || true
+            docker run -d \
+              --name fastapi-frontend \
+              -p 3000:3000 \
+              ${{ secrets.DOCKER_USERNAME }}/fastapi-frontend:latest
