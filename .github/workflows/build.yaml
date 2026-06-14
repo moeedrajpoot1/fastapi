@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION: eu-north-1
-  ECR_REPOSITORY: fastapi-backend
+  ECR_REPO_PREFIX: fastapi-backend
 
 jobs:
   build:
@@ -26,8 +26,11 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push image
+      - name: Build once, push to each environment's repo
         run: |
-          IMAGE=${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
-          docker build -t $IMAGE .
-          docker push $IMAGE
+          docker build -t fastapi-backend .
+          for ENV in dev staging prod; do
+            IMAGE=${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO_PREFIX }}-$ENV:latest
+            docker tag fastapi-backend $IMAGE
+            docker push $IMAGE
+          done
