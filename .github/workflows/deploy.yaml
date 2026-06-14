@@ -1,31 +1,31 @@
-name: Deploy to Aws
+# Backend: tell each ECS service to pull the new image and redeploy.
+name: Deploy Backend
 
 on:
   workflow_run:
-    workflows:
-      - "Build and Push Docker Image"
-    types:
-      - completed
-    branches:
-      - main
+    workflows: ["Build Backend"]
+    types: [completed]
+
+env:
+  AWS_REGION: eu-north-1
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
+    strategy:
+      matrix:
+        environment: [dev, staging, prod]
     steps:
-      - name: Deploy via SSH to Aws Ec2
-        uses: appleboy/ssh-action@v1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.AWS_HOST }}
-          username: ${{ secrets.AWS_USER }}
-          key: ${{ secrets.AWS_SSH_KEY }}
-          script: |
-            docker pull ${{ secrets.DOCKER_USERNAME }}/fastapi:latest
-            docker stop fastapi || true
-            docker rm fastapi || true
-            docker run -d \
-              --name fastapi \
-              -p 8000:8000 \
-              ${{ secrets.DOCKER_USERNAME }}/fastapi:latest
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Redeploy ECS service
+        run: |
+          aws ecs update-service \
+            --cluster fastapi-${{ matrix.environment }}-cluster \
+            --service fastapi-backend-${{ matrix.environment }}-service \
+            --force-new-deployment
